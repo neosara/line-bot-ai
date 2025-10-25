@@ -1,29 +1,41 @@
 import express from "express";
-import bodyParser from "body-parser";
-import line from "@line/bot-sdk";
+import { middleware, Client } from "@line/bot-sdk";
+import dotenv from "dotenv";
+import OpenAI from "openai";
+
+dotenv.config();
 
 const app = express();
 
-const config = {
-  channelAccessToken: process.env.LINE_ACCESS_TOKEN,
-  channelSecret: process.env.LINE_CHANNEL_SECRET
+const lineConfig = {
+  channelSecret: process.env.LINE_CHANNEL_SECRET,
+  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
 };
 
-const client = new line.Client(config);
-app.use(bodyParser.json());
+const client = new Client(lineConfig);
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Webhookエンドポイント
-app.post("/webhook", (req, res) => {
-  Promise.all(req.body.events.map(handleEvent))
-    .then(result => res.json(result));
-});
+app.post("/webhook", middleware(lineConfig), async (req, res) => {
+  const events = req.body.events;
+  for (const event of events) {
+    if (event.type === "message" && event.message.type === "text") {
+      const userMessage = event.message.text;
 
-function handleEvent(event) {
-  if (event.type !== "message" || event.message.type !== "text") {
-    return Promise.resolve(null);
+      try {
+        const aiResponse = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: userMessage }],
+        });
+
+        const replyText = aiResponse.choices[0].message.content;
+        await client.replyMessage(event.replyToken, { type: "text", text: replyText });
+      } catch (error) {
+        console.error("Error:", error);
+        await client.replyMessage(event.replyToken, { type: "text", text: "ごめんなさい、少し調子が悪いみたいです💦" });
+      }
+    }
   }
-  const reply = { type: "text", text: `あなたのメッセージ: ${event.message.text}` };
-  return client.replyMessage(event.replyToken, reply);
-}
+  res.status(200).end();
+});
 
 app.listen(3000, () => console.log("Server running"));
