@@ -5,6 +5,27 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
+
+const lineConfig = {
+  channelSecret: process.env.LINE_CHANNEL_SECRET,
+  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
+};
+
+// ✅ LINEのmiddlewareの前に express.json() を直接使わず、verifyでrawBodyを保持
+app.post("/webhook", middleware(lineConfig), express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  },
+}), async (req, res) => {
+  const events = req.body.events;
+  if (!events) {
+    res.status(200).end();
+    return;
+  }
+
+  // ← この中に今の for (const event of events) { ... } の中身を残してOK
+});
+
 app.use(express.json()); // ←これが重要（LINE署名エラー対策）
 
 const lineConfig = {
