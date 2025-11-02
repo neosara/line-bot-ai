@@ -13,22 +13,20 @@ const lineConfig = {
 
 const client = new Client(lineConfig);
 
-// ✅ 重要ポイント！
-// express.json() は middleware(lineConfig) より「後」に配置する
-app.post("/webhook", middleware(lineConfig), express.json(), async (req, res) => {
+// ▼ 質問リスト
+const questions = [
+  "デート中に相手を自然に誘う言葉を知っていますか？",
+  "『今日は疲れている』と言われた時、どう対応しますか？",
+  "前戯はどのくらいの時間を意識していますか？",
+  "相手が気持ちよさそうかどうか、どう判断していますか？",
+  "行為後のフォローを意識していますか？",
+];
+
+// ▼ 各ユーザーの状態を一時保存
+const userStates = {};
+
+app.post("/webhook", middleware(lineConfig), async (req, res) => {
   const events = req.body.events;
-
-  // ▼ 質問リスト
-  const questions = [
-    "デート中に相手を自然に誘う言葉を知っていますか？",
-    "『今日は疲れている』と言われた時、どう対応しますか？",
-    "前戯はどのくらいの時間を意識していますか？",
-    "相手が気持ちよさそうかどうか、どう判断していますか？",
-    "行為後のフォローを意識していますか？",
-  ];
-
-  // ▼ 各ユーザーの状態を一時保存（メモリ上）
-  const userStates = {};
 
   for (const event of events) {
     if (event.type !== "message" || event.message.type !== "text") continue;
@@ -36,9 +34,9 @@ app.post("/webhook", middleware(lineConfig), express.json(), async (req, res) =>
     const userId = event.source.userId;
     const userMessage = event.message.text.trim();
 
-    // まだ診断スタートしてない場合
+    // ▼ 診断開始判定
     if (!userStates[userId]) {
-      if (userMessage.match(/診断|スタート|はじめる/)) {
+      if (/診断|スタート|はじめる/.test(userMessage)) {
         userStates[userId] = { step: 0, answers: [] };
         await client.replyMessage(event.replyToken, {
           type: "text",
@@ -57,21 +55,23 @@ app.post("/webhook", middleware(lineConfig), express.json(), async (req, res) =>
       continue;
     }
 
-    // 診断中の場合
+    // ▼ 診断中の回答処理
     const state = userStates[userId];
     state.answers.push(userMessage);
     state.step++;
 
     if (state.step < questions.length) {
+      // 次の質問を送る
       await client.replyMessage(event.replyToken, {
         type: "text",
         text: questions[state.step],
       });
     } else {
-      const score = Math.floor(Math.random() * 40) + 60; // 仮スコア
+      // 診断完了！
+      const score = Math.floor(Math.random() * 40) + 60;
       await client.replyMessage(event.replyToken, {
         type: "text",
-        text: `診断完了🎉\nあなたのスコアは【${score}点】です！\n\n強み：優しさ・安定感\n弱み：もう少し自然な誘い方を練習しましょう✨\n\n👉 次回は「より実践的な診断」にも挑戦できます！`,
+        text: `診断完了🎉\nあなたのスコアは【${score}点】です！\n強み：優しさ・安定感\n弱み：もう少し自然な誘い方を練習しましょう✨`,
       });
       delete userStates[userId];
     }
