@@ -5,7 +5,6 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
-app.use(express.json()); // ← これを必ず入れる（署名エラー対策）
 
 const lineConfig = {
   channelSecret: process.env.LINE_CHANNEL_SECRET,
@@ -14,21 +13,22 @@ const lineConfig = {
 
 const client = new Client(lineConfig);
 
-// ▼ 質問リスト
-const questions = [
-  "デート中に相手を自然に誘う言葉を知っていますか？",
-  "『今日は疲れている』と言われた時、どう対応しますか？",
-  "前戯はどのくらいの時間を意識していますか？",
-  "相手が気持ちよさそうかどうか、どう判断していますか？",
-  "行為後のフォローを意識していますか？",
-];
-
-// ▼ 各ユーザーの状態を一時保存
-const userStates = {};
-
-// ✅ middleware(lineConfig) は express.json() より先に！
-app.post("/webhook", middleware(lineConfig), async (req, res) => {
+// ✅ 重要ポイント！
+// express.json() は middleware(lineConfig) より「後」に配置する
+app.post("/webhook", middleware(lineConfig), express.json(), async (req, res) => {
   const events = req.body.events;
+
+  // ▼ 質問リスト
+  const questions = [
+    "デート中に相手を自然に誘う言葉を知っていますか？",
+    "『今日は疲れている』と言われた時、どう対応しますか？",
+    "前戯はどのくらいの時間を意識していますか？",
+    "相手が気持ちよさそうかどうか、どう判断していますか？",
+    "行為後のフォローを意識していますか？",
+  ];
+
+  // ▼ 各ユーザーの状態を一時保存（メモリ上）
+  const userStates = {};
 
   for (const event of events) {
     if (event.type !== "message" || event.message.type !== "text") continue;
