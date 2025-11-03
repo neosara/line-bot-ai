@@ -1,7 +1,7 @@
 import express from "express";
 import { middleware, Client } from "@line/bot-sdk";
 import dotenv from "dotenv";
-
+import { google } from "googleapis"; 
 dotenv.config();
 import { google } from "googleapis";
 import fs from "fs";
@@ -98,7 +98,6 @@ app.post("/webhook", middleware(lineConfig), async (req, res) => {
         resultType = "🌙ぎこちないけど誠実タイプ";
         advice = "丁寧さは伝わってる。経験を重ねると自然体の魅力が出てきます✨";
       }
-import { google } from "googleapis"; // ← ファイルの一番上に1行追加（まだなければ）
 
 // ======== スプレッドシート書き込み部分 ========
 try {
