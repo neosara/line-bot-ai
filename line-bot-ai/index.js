@@ -3,6 +3,19 @@ import { middleware, Client } from "@line/bot-sdk";
 import dotenv from "dotenv";
 
 dotenv.config();
+import { google } from "googleapis";
+import fs from "fs";
+
+// Google認証の設定（サービスアカウントキーを使う）
+const auth = new google.auth.GoogleAuth({
+  credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY),
+  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+});
+
+const sheets = google.sheets({ version: "v4", auth });
+
+// あなたのスプレッドシートID（URLの中の部分）
+const SPREADSHEET_ID = "18TitZtNuwvrnt0gkYEPt1wNoZ2YaDFoLnIIqRBME-xo";
 
 const app = express();
 
@@ -90,6 +103,22 @@ app.post("/webhook", middleware(lineConfig), async (req, res) => {
         type: "text",
         text: `診断完了🎉\nあなたのスコアは【${score}点】！\nタイプ：${resultType}\n${advice}`,
       });
+      // スプレッドシートに記録
+await sheets.spreadsheets.values.append({
+  spreadsheetId: SPREADSHEET_ID,
+  range: "シート1!A:D", // シート名が違う場合は変更
+  valueInputOption: "USER_ENTERED",
+  requestBody: {
+    values: [
+      [
+        new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }),
+        userId,
+        score,
+        state.answers.join(" / "),
+      ],
+    ],
+  },
+});
 
       delete userStates[userId];
     }
