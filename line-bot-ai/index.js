@@ -3,7 +3,6 @@ import { middleware, Client } from "@line/bot-sdk";
 import dotenv from "dotenv";
 import { google } from "googleapis"; 
 dotenv.config();
-import { google } from "googleapis";
 import fs from "fs";
 
 // Google認証の設定（サービスアカウントキーを使う）
