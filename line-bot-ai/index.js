@@ -98,6 +98,36 @@ app.post("/webhook", middleware(lineConfig), async (req, res) => {
         resultType = "🌙ぎこちないけど誠実タイプ";
         advice = "丁寧さは伝わってる。経験を重ねると自然体の魅力が出てきます✨";
       }
+import { google } from "googleapis"; // ← ファイルの一番上に1行追加（まだなければ）
+
+// ======== スプレッドシート書き込み部分 ========
+try {
+  const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+
+  const auth = new google.auth.GoogleAuth({
+    credentials: serviceAccount,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+  });
+
+  const sheets = google.sheets({ version: "v4", auth });
+
+  const SPREADSHEET_ID = "18TitZtNuwvrnt0gkYEPt1wNoZ2YaDFoLnIIqRBME-xo";
+
+  const now = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: "A1",
+    valueInputOption: "USER_ENTERED",
+    requestBody: {
+      values: [[now, userId, score, resultType, advice]],
+    },
+  });
+
+  console.log("✅ スプレッドシートに書き込み成功");
+} catch (err) {
+  console.error("❌ スプレッドシート書き込みエラー:", err);
+}
 
       await client.replyMessage(event.replyToken, {
         type: "text",
