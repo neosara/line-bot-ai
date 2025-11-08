@@ -10,6 +10,10 @@
     "dotenv": "^16.0.3",
     "openai": "^4.0.0",
     "googleapis": "^133.0.0"
+  },
+  "scripts": {
+    "start": "node --openssl-legacy-provider index.js"
   }
 }
+
 
