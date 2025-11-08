@@ -13,7 +13,6 @@
   },
  "scripts": {
   "start": "node --openssl-legacy-provider index.js"
+  }
 }
-
-
 
