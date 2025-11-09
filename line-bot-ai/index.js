@@ -2,8 +2,41 @@ import express from "express";
 import { middleware, Client } from "@line/bot-sdk";
 import dotenv from "dotenv";
 import { google } from "googleapis"; 
-dotenv.config();
+dotenv.config(); // ← この下に入れる！
 import fs from "fs";
+
+// ========================
+// Google認証設定
+// ========================
+const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+const auth = new google.auth.GoogleAuth({
+  credentials: serviceAccount,
+  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+});
+const sheets = google.sheets({ version: "v4", auth });
+
+// ========================
+// スプレッドシート書き込みテスト
+// ========================
+(async () => {
+  try {
+    const spreadsheetId = "18TitZtNuwvrnt0gkYEPt1wNoZ2YaDFoLnIIqRBME-xo";
+    const range = "シート1!A1";
+
+    console.log("✅ スプレッドシート書き込みテスト開始...");
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [["テスト書き込み成功！", new Date().toLocaleString("ja-JP")]],
+      },
+    });
+    console.log("✅ テスト書き込み成功！");
+  } catch (err) {
+    console.error("❌ テスト書き込みエラー:", err);
+  }
+})();
 
 // Google認証の設定（サービスアカウントキーを使う）
 const auth = new google.auth.GoogleAuth({
