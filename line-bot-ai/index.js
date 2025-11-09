@@ -1,8 +1,8 @@
 import express from "express";
 import { middleware, Client } from "@line/bot-sdk";
 import dotenv from "dotenv";
-import { google } from "googleapis"; 
-dotenv.config(); // ← この下に入れる！
+import { google } from "googleapis";
+dotenv.config(); // ← ここまではそのまま
 import fs from "fs";
 
 // ========================
@@ -38,17 +38,9 @@ const sheets = google.sheets({ version: "v4", auth });
   }
 })();
 
-// Google認証の設定（サービスアカウントキーを使う）
-const auth = new google.auth.GoogleAuth({
-  credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT),
-  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-});
-
-const sheets = google.sheets({ version: "v4", auth });
-
-// あなたのスプレッドシートID（URLの中の部分）
-const SPREADSHEET_ID = "18TitZtNuwvrnt0gkYEPt1wNoZ2YaDFoLnIIqRBME-xo";
-
+// ========================
+// LINE BOT 本体
+// ========================
 const app = express();
 
 const lineConfig = {
@@ -79,7 +71,6 @@ app.post("/webhook", middleware(lineConfig), async (req, res) => {
     const userId = event.source.userId;
     const userMessage = event.message.text.trim();
 
-    // ▼ 診断スタート判定
     if (!userStates[userId]) {
       if (/診断|スタート|はじめる/.test(userMessage)) {
         userStates[userId] = { step: 0, answers: [] };
@@ -100,20 +91,17 @@ app.post("/webhook", middleware(lineConfig), async (req, res) => {
       continue;
     }
 
-    // ▼ 診断中の回答処理
     const state = userStates[userId];
     state.answers.push(userMessage);
     state.step++;
 
     if (state.step < questions.length) {
-      // 次の質問を送る
       await client.replyMessage(event.replyToken, {
         type: "text",
         text: questions[state.step],
       });
     } else {
-      // ▼ 診断完了（スコア＋タイプ別コメント）
-      const score = Math.floor(Math.random() * 41) + 60; // 60〜100のランダムスコア
+      const score = Math.floor(Math.random() * 41) + 60;
       let resultType = "";
       let advice = "";
 
@@ -131,59 +119,40 @@ app.post("/webhook", middleware(lineConfig), async (req, res) => {
         advice = "丁寧さは伝わってる。経験を重ねると自然体の魅力が出てきます✨";
       }
 
-// ======== スプレッドシート書き込み部分 ========
-try {
-  const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+      // ======== スプレッドシート書き込み部分 ========
+      try {
+        const now = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
 
-  const auth = new google.auth.GoogleAuth({
-    credentials: serviceAccount,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-  });
+        await sheets.spreadsheets.values.append({
+          spreadsheetId: "18TitZtNuwvrnt0gkYEPt1wNoZ2YaDFoLnIIqRBME-xo",
+          range: "シート1!A:D",
+          valueInputOption: "USER_ENTERED",
+          requestBody: {
+            values: [
+              [now, userId, score, resultType, advice, state.answers.join(" / ")],
+            ],
+          },
+        });
 
-  const sheets = google.sheets({ version: "v4", auth });
-
-  const SPREADSHEET_ID = "18TitZtNuwvrnt0gkYEPt1wNoZ2YaDFoLnIIqRBME-xo";
-
-  const now = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: SPREADSHEET_ID,
-    range: "A1",
-    valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: [[now, userId, score, resultType, advice]],
-    },
-  });
-
-  console.log("✅ スプレッドシートに書き込み成功");
-} catch (err) {
-  console.error("❌ スプレッドシート書き込みエラー:", err);
-}
+        console.log("✅ スプレッドシートに書き込み成功");
+      } catch (err) {
+        console.error("❌ スプレッドシート書き込みエラー:", err);
+      }
 
       await client.replyMessage(event.replyToken, {
         type: "text",
         text: `診断完了🎉\nあなたのスコアは【${score}点】！\nタイプ：${resultType}\n${advice}`,
       });
-      // スプレッドシートに記録
-await sheets.spreadsheets.values.append({
-  spreadsheetId: SPREADSHEET_ID,
-  range: "シート1!A:D", // シート名が違う場合は変更
-  valueInputOption: "USER_ENTERED",
-  requestBody: {
-    values: [
-      [
-        new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }),
-        userId,
-        score,
-        state.answers.join(" / "),
-      ],
-    ],
-  },
-});
 
       delete userStates[userId];
     }
   }
+
+  res.status(200).end();
+});
+
+app.listen(3000, () => console.log("Server running"));
+
 
   res.status(200).end();
 });
