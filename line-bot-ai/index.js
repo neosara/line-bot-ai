@@ -153,8 +153,3 @@ app.post("/webhook", middleware(lineConfig), async (req, res) => {
 
 app.listen(3000, () => console.log("Server running"));
 
-
-  res.status(200).end();
-});
-
-app.listen(3000, () => console.log("Server running"));
