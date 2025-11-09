@@ -11,7 +11,9 @@
     "openai": "^4.0.0",
     "googleapis": "^133.0.0"
   },
-"scripts": {
-  "start": "NODE_OPTIONS=--openssl-legacy-provider node index.js"
+  "scripts": {
+    "start": "NODE_OPTIONS=--openssl-legacy-provider node index.js"
+  }
 }
+
 
