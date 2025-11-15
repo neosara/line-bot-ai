@@ -2,17 +2,20 @@ import express from "express";
 import { middleware, Client } from "@line/bot-sdk";
 import dotenv from "dotenv";
 import { google } from "googleapis";
-dotenv.config(); // ← ここまではそのまま
-import fs from "fs";
+dotenv.config();
 
 // ========================
-// Google認証設定
+// Google認証設定（正しい形）
 // ========================
-const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+const serviceAccount = JSON.parse(
+  process.env.GOOGLE_SERVICE_ACCOUNT.replace(/\\n/g, "\n")
+);
+
 const auth = new google.auth.GoogleAuth({
   credentials: serviceAccount,
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
 });
+
 const sheets = google.sheets({ version: "v4", auth });
 
 // ========================
@@ -24,14 +27,18 @@ const sheets = google.sheets({ version: "v4", auth });
     const range = "シート1!A1";
 
     console.log("✅ スプレッドシート書き込みテスト開始...");
+
     await sheets.spreadsheets.values.append({
       spreadsheetId,
       range,
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [["テスト書き込み成功！", new Date().toLocaleString("ja-JP")]],
+        values: [
+          ["テスト書き込み成功！", new Date().toLocaleString("ja-JP")]
+        ],
       },
     });
+
     console.log("✅ テスト書き込み成功！");
   } catch (err) {
     console.error("❌ テスト書き込みエラー:", err);
@@ -107,7 +114,8 @@ app.post("/webhook", middleware(lineConfig), async (req, res) => {
 
       if (score >= 85) {
         resultType = "💘理想的リードタイプ";
-        advice = "自然な流れと気配りが完璧。相手の反応をよく見て、リズムを合わせるセンスあり。";
+        advice =
+          "自然な流れと気配りが完璧。相手の反応をよく見て、リズムを合わせるセンスあり。";
       } else if (score >= 70) {
         resultType = "🌹優しさ安定タイプ";
         advice = "思いやり重視の姿勢がGood。もう一歩だけリード力を意識してみて。";
@@ -121,15 +129,24 @@ app.post("/webhook", middleware(lineConfig), async (req, res) => {
 
       // ======== スプレッドシート書き込み部分 ========
       try {
-        const now = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+        const now = new Date().toLocaleString("ja-JP", {
+          timeZone: "Asia/Tokyo",
+        });
 
         await sheets.spreadsheets.values.append({
           spreadsheetId: "18TitZtNuwvrnt0gkYEPt1wNoZ2YaDFoLnIIqRBME-xo",
-          range: "シート1!A:D",
+          range: "シート1!A:F",
           valueInputOption: "USER_ENTERED",
           requestBody: {
             values: [
-              [now, userId, score, resultType, advice, state.answers.join(" / ")],
+              [
+                now,
+                userId,
+                score,
+                resultType,
+                advice,
+                state.answers.join(" / "),
+              ],
             ],
           },
         });
